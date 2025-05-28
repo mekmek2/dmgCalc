@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>공격력 계산기</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #f4f4f9; color: #333; padding: 20px; }
+    h2 { color: #222; }
+    label, fieldset { margin-top: 10px; display: block; }
+    input[type="number"] { width: 100px; margin-left: 10px; }
+    .result { margin-top: 20px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: right; }
+    th { background: #eee; }
+  </style>
+</head>
+<body>
+  <h2>마비노기 공격력 계산기</h2>
+
+  <label>기본 공격력 입력: <input type="number" id="attackInput" value="1500"></label>
+  <label>증가시킬 공격력: <input type="number" id="attackGain" value="0"></label>
+  <label><input type="checkbox" id="check50" checked> 정령 포함(+50)</label>
+
+  <fieldset>
+    <legend>아르카나 링크 효과</legend>
+    <label><input type="radio" name="radioInclude" value="0"> 없음</label>
+    <label><input type="radio" name="radioInclude" value="100"> 100 (알스)</label>
+    <label><input type="radio" name="radioInclude" value="200" checked> 200 (엘나/블랜/세바)</label>
+    <label><input type="radio" name="radioInclude" value="250"> 250 (닼메)</label>
+  </fieldset>
+
+  <label>전장/비바체 (%): <input type="number" id="buffA" value="20.00"></label>
+  <label><input type="checkbox" id="potionC" checked> 포션 적용 (20%)</label>
+  <label><input type="checkbox" id="buffB"> 인젝션 적용 (10%)</label>
+
+  <br>
+  <button onclick="calculateDamage()">계산하기</button>
+
+  <div class="result" id="result"></div>
+
+  <script>
+    function calculateDamage() {
+      const attackBase = parseFloat(document.getElementById('attackInput').value);
+      const attackGain = parseFloat(document.getElementById('attackGain').value);
+
+      const scenarios = [attackBase];
+      if (attackGain > 0) scenarios.push(attackBase + attackGain);
+
+      const include50 = document.getElementById('check50').checked;
+      const radioVal = parseInt(document.querySelector('input[name="radioInclude"]:checked').value);
+      const buffAInput = parseFloat(document.getElementById('buffA').value);
+      const buffA = buffAInput / 100;
+      const buffB = document.getElementById('buffB').checked ? 1.1 : 1.0;
+      const potionC = document.getElementById('potionC').checked ? 1.2 : 1.0;
+
+      const A1 = buffA * buffB * potionC;
+      const D1 = 0.12 * buffB * potionC;
+      const E1 = 0.15 * buffB * potionC;
+
+      let output = `<strong>계산 결과</strong><br>
+        <table>
+          <thead>
+            <tr>
+              <th>항목</th>
+              <th>기본 공격력 (${attackBase})</th>`;
+
+      if (attackGain > 0) {
+        output += `<th>증가 후 공격력 (${attackBase + attackGain})</th><th>증가율 (%)</th>`;
+      }
+
+      output += `</tr></thead><tbody>`;
+
+      const labels = [
+        { name: '기본 공격력', calc: (a, x, y) => (a * buffB * potionC + x * buffB + y) },
+        { name: '+ 상태지원', calc: (a, x, y) => (a * buffB * potionC * (1 + D1) + x * buffB * (1 + D1) + y * (1 + D1)) },
+        { name: '+ 음악버프', calc: (a, x, y) => (a * buffB * potionC * (1 + A1) + x * buffB * (1 + A1) + y * (1 + A1)) },
+        { name: '+ (상지+음벞)', calc: (a, x, y) => (a * buffB * potionC * (1 + A1 + D1) + x * buffB * (1 + A1 + D1) + y * (1 + A1 + D1)) },
+        { name: '+ 힘의결속', calc: (a, x, y) => (a * buffB * potionC * (1 + A1 + D1 + E1) + x * buffB * (1 + A1 + D1 + E1) + y * (1 + A1 + D1 + E1)) },
+      ];
+
+      function decomposeAttack(attack) {
+        const x = include50 && attack >= 50 ? 50 : 0;
+        const y = attack >= radioVal ? radioVal : 0;
+        const a = attack - x - y;
+        return { a, x, y };
+      }
+
+      const decomp = scenarios.map(decomposeAttack);
+
+      for (let i = 0; i < labels.length; i++) {
+        const label = labels[i];
+        const baseVal = label.calc(decomp[0].a, decomp[0].x, decomp[0].y);
+        output += `<tr><td>${label.name}</td><td>${baseVal.toFixed(2)}</td>`;
+
+        if (attackGain > 0) {
+          const gainVal = label.calc(decomp[1].a, decomp[1].x, decomp[1].y);
+          const percentGain = ((gainVal - baseVal) / baseVal * 100).toFixed(2);
+          output += `<td>${gainVal.toFixed(2)}</td><td>${percentGain}%</td>`;
+        }
+
+        output += `</tr>`;
+      }
+
+      output += '</tbody></table>';
+      document.getElementById('result').innerHTML = output;
+    }
+  </script>
+</body>
+</html>
