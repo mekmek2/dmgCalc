@@ -2,16 +2,19 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>공격력 계산기</title>
   <style>
-    body { font-family: 'Segoe UI', sans-serif; background: #f4f4f9; color: #333; padding: 20px; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f4f4f9; color: #333; padding: 20px; margin: 0; }
     h2 { color: #222; }
     label, fieldset { margin-top: 10px; display: block; }
-    input[type="number"] { width: 100px; margin-left: 10px; }
-    .result { margin-top: 20px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    input[type="number"] { width: 100%; max-width: 200px; margin-left: 10px; }
+    .result { margin-top: 20px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; min-width: 400px; }
     th, td { border: 1px solid #ccc; padding: 10px; text-align: right; }
     th { background: #eee; }
+    button { margin-top: 15px; padding: 10px 20px; font-size: 16px; }
+    fieldset { border: 1px solid #ccc; padding: 10px; border-radius: 5px; }
   </style>
 </head>
 <body>
@@ -19,6 +22,10 @@
 
   <label>기본 공격력: <input type="number" id="attackInput" value="1500"></label>
   <label>목표 공격력: <input type="number" id="attackGain" value="0"></label>
+  <br>
+  <label>음악버프 (%): <input type="number" id="buffA" value="20.00"></label>
+  <label>음악버프 비교값 (%): <input type="number" id="buffAGoal" value="0"></label>
+
   <fieldset>
     <legend>정령 무기</legend>
     <label><input type="radio" name="spriteInclude" value="0"> 없음</label>
@@ -37,7 +44,6 @@
     <label><input type="radio" name="radioInclude" value="250"> 250 (엘나/닼메)</label>
   </fieldset>
 
-  <label>전장/비바체 (%): <input type="number" id="buffA" value="20.00"></label>
   <label><input type="checkbox" id="potionC" checked> 포션 적용 (20%)</label>
   <label><input type="checkbox" id="buffB"> 인젝션 적용 (10%)</label>
 
@@ -50,6 +56,7 @@
     function calculateDamage() {
       const attackBase = parseFloat(document.getElementById('attackInput').value);
       const attackGain = parseFloat(document.getElementById('attackGain').value);
+      const buffAGoal = parseFloat(document.getElementById('buffAGoal').value);
 
       const scenarios = [attackBase];
       if (attackGain > 0) scenarios.push(attackGain);
@@ -57,16 +64,16 @@
       const includeAdd = parseInt(document.querySelector('input[name="spriteInclude"]:checked').value);
       const radioVal = parseInt(document.querySelector('input[name="radioInclude"]:checked').value);
       const buffAInput = parseFloat(document.getElementById('buffA').value);
-      const buffA = buffAInput / 100;
       const buffB = document.getElementById('buffB').checked ? 1.1 : 1.0;
       const potionC = document.getElementById('potionC').checked ? 1.2 : 1.0;
 
-      const A1 = 1 + (buffA * buffB * potionC);
+      function getBuffA1(a) { return 1 + (a / 100 * buffB * potionC); }
+      const A1 = getBuffA1(buffAInput);
       const D1 = 1 + (0.12 * buffB * potionC);
       const E1 = 1 + (0.15 * buffB * potionC);
 
       let output = `<strong>계산 결과</strong><br>
-        <table>
+        <div style="overflow-x:auto;"><table>
           <thead>
             <tr>
               <th>항목</th>
@@ -80,22 +87,19 @@
 
       function muls(...nums) {
         if (nums.length === 0) return 0;
-
         let result = nums[0];
-
         for (let i = 1; i < nums.length; i++) {
           result = Math.trunc(result * nums[i]);
         }
-
         return result;
       }
 
       const labels = [
-        { name: '기본 공격력', calc: (a, x, y) => (muls(a, buffB, potionC) + muls(x, buffB) + y) },
-        { name: '+ 상태지원', calc: (a, x, y) => (muls(a, buffB, potionC, D1) + muls(x, buffB, D1) + muls(y, D1)) },
-        { name: '+ 음악버프', calc: (a, x, y) => (muls(a, buffB, potionC, A1) + muls(x,buffB, A1) + muls(y, A1)) },
-        { name: '+ (상지+음벞)', calc: (a, x, y) => (muls(a, buffB, potionC, A1, D1) + muls(x, buffB, A1, D1) + muls(y, A1, D1)) },
-        { name: '+ 힘의결속', calc: (a, x, y) => (muls(a, buffB, potionC, A1, D1, E1) + muls(x, buffB, A1, D1, E1) + muls(y, A1, D1, E1)) },
+        { name: '기본 공격력', calc: (a, x, y, a1) => (muls(a, buffB, potionC) + muls(x, buffB) + y) },
+        { name: '+ 상태지원', calc: (a, x, y, a1) => (muls(a, buffB, potionC, D1) + muls(x, buffB, D1) + muls(y, D1)) },
+        { name: '+ 음악버프', calc: (a, x, y, a1) => (muls(a, buffB, potionC, a1) + muls(x, buffB, a1) + muls(y, a1)) },
+        { name: '+ (상지+음벞)', calc: (a, x, y, a1) => (muls(a, buffB, potionC, a1, D1) + muls(x, buffB, a1, D1) + muls(y, a1, D1)) },
+        { name: '+ 힘의결속', calc: (a, x, y, a1) => (muls(a, buffB, potionC, a1, D1, E1) + muls(x, buffB, a1, D1, E1) + muls(y, a1, D1, E1)) },
       ];
 
       function decomposeAttack(attack) {
@@ -109,11 +113,11 @@
 
       for (let i = 0; i < labels.length; i++) {
         const label = labels[i];
-        const baseVal = label.calc(decomp[0].a, decomp[0].x, decomp[0].y);
+        const baseVal = label.calc(decomp[0].a, decomp[0].x, decomp[0].y, A1);
         output += `<tr><td>${label.name}</td><td>${baseVal}</td>`;
 
         if (attackGain > 0) {
-          const gainVal = label.calc(decomp[1].a, decomp[1].x, decomp[1].y);
+          const gainVal = label.calc(decomp[1].a, decomp[1].x, decomp[1].y, A1);
           const percentGain = ((gainVal - baseVal) / baseVal * 100).toFixed(2);
           output += `<td>${gainVal}</td><td>${percentGain}%</td>`;
         }
@@ -121,7 +125,28 @@
         output += `</tr>`;
       }
 
-      output += '</tbody></table>';
+      output += '</tbody></table></div>';
+
+      if (buffAGoal > 0 && buffAGoal !== buffAInput) {
+        const A1Goal = getBuffA1(buffAGoal);
+        output += `<br><strong>음악버프 효과 비교 (공격력 ${attackBase} 기준)</strong><br>
+          <div style="overflow-x:auto;"><table>
+            <thead>
+              <tr><th>항목</th><th>기존 (${buffAInput}%)</th><th>변화 (${buffAGoal}%)</th><th>증가율 (%)</th></tr>
+            </thead><tbody>`;
+
+        for (let i = 0; i < labels.length; i++) {
+          if(i==1) continue;
+          const label = labels[i];
+          const before = label.calc(decomp[0].a, decomp[0].x, decomp[0].y, A1);
+          const after = label.calc(decomp[0].a, decomp[0].x, decomp[0].y, A1Goal);
+          const percent = ((after - before) / before * 100).toFixed(2);
+          output += `<tr><td>${label.name}</td><td>${before}</td><td>${after}</td><td>${percent}%</td></tr>`;
+        }
+
+        output += '</tbody></table></div>';
+      }
+
       document.getElementById('result').innerHTML = output;
     }
   </script>
