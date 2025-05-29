@@ -19,7 +19,15 @@
 
   <label>기본 공격력: <input type="number" id="attackInput" value="1500"></label>
   <label>목표 공격력: <input type="number" id="attackGain" value="0"></label>
-  <label><input type="checkbox" id="check50" checked> 정령 포함(+50)</label>
+  <fieldset>
+    <legend>정령 무기</legend>
+    <label><input type="radio" name="spriteInclude" value="0"> 없음</label>
+    <label><input type="radio" name="spriteInclude" value="25"> 25 (듀얼건/수리검/아틀라틀)</label>
+    <label><input type="radio" name="spriteInclude" value="30"> 30 (활/석궁)</label>
+    <label><input type="radio" name="spriteInclude" value="40"> 40 (한손무기/체인)</label>
+    <label><input type="radio" name="spriteInclude" value="50" checked> 50 (양손무기/마법무기)</label>
+    <label><input type="radio" name="spriteInclude" value="70"> 70 (너클/핸들)</label>
+  </fieldset>
 
   <fieldset>
     <legend>아르카나 링크 효과</legend>
@@ -46,7 +54,7 @@
       const scenarios = [attackBase];
       if (attackGain > 0) scenarios.push(attackGain);
 
-      const include50 = document.getElementById('check50').checked;
+      const includeAdd = parseInt(document.querySelector('input[name="spriteInclude"]:checked').value);
       const radioVal = parseInt(document.querySelector('input[name="radioInclude"]:checked').value);
       const buffAInput = parseFloat(document.getElementById('buffA').value);
       const buffA = buffAInput / 100;
@@ -91,7 +99,7 @@
       ];
 
       function decomposeAttack(attack) {
-        const x = include50 && attack >= 50 ? 50 : 0;
+        const x = attack >= includeAdd ? includeAdd : 0;
         const y = attack >= radioVal ? radioVal : 0;
         const a = attack - x - y;
         return { a, x, y };
